@@ -509,42 +509,38 @@ app.put("/api/dokumen/:id", authenticateToken, async (req: any, res) => {
 
 // Delete Document
 app.delete("/api/dokumen/:id", authenticateToken, async (req: any, res) => {
-  const { id } = req.params;
-  const list = await dbService.getDokumen();
-  const doc = list.find(d => d.id === id);
+  try {
+    const { id } = req.params;
+    const list = await dbService.getDokumen();
+    const doc = list.find(d => d.id === id);
 
-if (!doc) {
-    return res.status(404).json({
+    if (!doc) {
+      return res.status(404).json({
         message: "Dokumen tidak ditemukan."
-    });
-}
-
-if (doc.file_url?.includes("blob.vercel-storage.com")) {
-    try {
-        await del(doc.file_url);
-    } catch (err) {
-        console.error(err);
+      });
     }
-}
 
-if (doc.file_url?.includes("blob.vercel-storage.com")) {
-    try {
+    if (doc.file_url?.includes("blob.vercel-storage.com")) {
+      try {
         await del(doc.file_url);
-    } catch (err) {
-        console.error(err);
+      } catch (err) {
+        console.error("Gagal menghapus Blob:", err);
+      }
     }
-}
 
-await dbService.deleteDokumen(id);
+    await dbService.deleteDokumen(id);
 
-  await dbService.deleteDokumen(id);
-  await dbService.addLog(
-    req.user.username,
-    "Hapus Dokumen",
-    `Menghapus dokumen "${doc.nama_dokumen}" (${doc.nomor_dokumen}).`
-  );
+    await dbService.addLog(
+      req.user.username,
+      "Hapus Dokumen",
+      `Menghapus dokumen "${doc.nama_dokumen}" (${doc.nomor_dokumen}).`
+    );
 
-  res.json({ message: "Dokumen berhasil dihapus." });
+    res.json({ message: "Dokumen berhasil dihapus." });
+  } catch (error: any) {
+    console.error("Delete document route error:", error);
+    res.status(500).json({ message: error.message || "Gagal menghapus dokumen." });
+  }
 });
 
 // Trigger download logger
@@ -648,6 +644,7 @@ async function start() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static(distPath));
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
@@ -661,8 +658,6 @@ async function start() {
   }
 }
 
-if (!process.env.VERCEL) {
-  start();
-}
+start();
 
 export default app;
